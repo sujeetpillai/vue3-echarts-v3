@@ -6,7 +6,6 @@
   },
   "dependencies": {
     "element-resize-detector": "latest",
-    "lodash": "latest",
     "lodash.throttle": "^4.1.1"
   },
   "description": "Vue.js component wrap for ECharts.js(v3.x+)",
