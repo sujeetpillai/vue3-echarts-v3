@@ -1,4 +1,4 @@
-# vue-echarts-v3 [![npm](https://img.shields.io/npm/v/vue-echarts-v3.svg)](https://www.npmjs.com/package/vue-echarts-v3) [![vue2](https://img.shields.io/badge/vue-2.x-brightgreen.svg)](https://vuejs.org/) [![echarts3](https://img.shields.io/badge/echarts-3.x-brightgreen.svg)](http://echarts.baidu.com/)
+# vue3-echarts-v3 [![npm](https://img.shields.io/npm/v/vue-echarts-v3.svg)](https://www.npmjs.com/package/vue-echarts-v3) [![vue2](https://img.shields.io/badge/vue-2.x-brightgreen.svg)](https://vuejs.org/) [![echarts3](https://img.shields.io/badge/echarts-3.x-brightgreen.svg)](http://echarts.baidu.com/)
 
 > [Vue.js](https://vuejs.org/) `v3.x+` component wrap for [Apache ECharts (incubating)](https://github.com/apache/incubator-echarts) `v3.x+`
 
@@ -14,7 +14,7 @@ Minimally ported from [https://github.com/xlsdg/vue-echarts-v3](https://github.c
 ## Installation
 
 ```bash
-$ npm install --save echarts vue-echarts-v3
+$ npm install --save echarts vue3-echarts-v3
 ```
 
 
@@ -31,10 +31,10 @@ $ npm install --save echarts vue-echarts-v3
             include: [
     -          path.join(prjRoot, 'src')
     +          path.join(prjRoot, 'src'),
-    +          path.join(prjRoot, 'node_modules/vue-echarts-v3/src')
+    +          path.join(prjRoot, 'node_modules/vue3-echarts-v3/src')
             ],
     -        exclude: /node_modules/
-    +        exclude: /node_modules(?![\\/]vue-echarts-v3[\\/]src[\\/])/
+    +        exclude: /node_modules(?![\\/]vue3-echarts-v3[\\/]src[\\/])/
           },
     ```
 
@@ -45,20 +45,20 @@ $ npm install --save echarts vue-echarts-v3
             test: /\.js$/,
             loader: 'babel-loader',
     -       include: [resolve('src'), resolve('test')]
-    +       include: [resolve('src'), resolve('test'), resolve('node_modules/vue-echarts-v3/src')]
+    +       include: [resolve('src'), resolve('test'), resolve('node_modules/vue3-echarts-v3/src')]
           }
     ```
 
 1. Import all charts and components
 
     ```javascript
-    import IEcharts from 'vue-echarts-v3/src/full.js';
+    import IEcharts from 'vue3-echarts-v3/src/full.js';
     ```
 
 2. Import ECharts.js modules manually to reduce bundle size
 
     ```javascript
-    import IEcharts from 'vue-echarts-v3/src/lite.js';
+    import IEcharts from 'vue3-echarts-v3/src/lite.js';
 
     // import 'echarts/lib/chart/line';
     import 'echarts/lib/chart/bar';
@@ -120,7 +120,7 @@ $ npm install --save echarts vue-echarts-v3
 </template>
 
 <script type="text/babel">
-  import IEcharts from 'vue-echarts-v3/src/full.js';
+  import IEcharts from 'vue3-echarts-v3/src/full.js';
   export default {
     name: 'view',
     components: {
@@ -243,9 +243,6 @@ See more [ECharts' Option](http://echarts.baidu.com/option.html)
 Learn more [ECharts' API](http://echarts.baidu.com/api.html)
 
 
-## Demo
-
-[vue-echarts-v3-demo](https://github.com/xlsdg/vue-echarts-v3-demo)
 
 # License
 
