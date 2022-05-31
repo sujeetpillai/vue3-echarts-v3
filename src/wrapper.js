@@ -1,4 +1,5 @@
 import _throttle from 'lodash.throttle';
+import {h} from 'vue';
 import Resize from 'element-resize-detector';
 
 const ECHARTS_EVENTS = [
@@ -90,7 +91,8 @@ function wrapECharts(ECharts) {
       return {
         fnResize: null,
         insResize: null,
-        instance: null,
+        // instance: null,
+        // Had to make this variable non-reactive. It is still set in this.instance in init.
         watches: {
           loading: null,
           option: null,
@@ -412,7 +414,7 @@ function wrapECharts(ECharts) {
     registerTheme(themeName, theme) {
       return ECharts.registerTheme(themeName, theme);
     },
-    render(h) {
+    render() {
       const that = this;
       return h('div', {
         style: that.styles

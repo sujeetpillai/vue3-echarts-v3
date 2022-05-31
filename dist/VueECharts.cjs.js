@@ -5,6 +5,7 @@ function _interopDefault(ex) {
 }
 
 var _throttle = _interopDefault(require('lodash.throttle'));
+var vue = require('vue');
 var Resize = _interopDefault(require('element-resize-detector'));
 var ECharts = require('echarts');
 
@@ -99,7 +100,8 @@ function wrapECharts(ECharts$$1) {
       return {
         fnResize: null,
         insResize: null,
-        instance: null,
+        // instance: null,
+        // Had to make this variable non-reactive. It is still set in this.instance in init.
         watches: {
           loading: null,
           option: null,
@@ -451,9 +453,9 @@ function wrapECharts(ECharts$$1) {
     registerTheme: function registerTheme(themeName, theme) {
       return ECharts$$1.registerTheme(themeName, theme);
     },
-    render: function render(h) {
+    render: function render() {
       var that = this;
-      return h('div', {
+      return vue.h('div', {
         style: that.styles,
       });
     },

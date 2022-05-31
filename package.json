@@ -1,12 +1,13 @@
 {
-  "author": "xLsDg <xlsdg@qq.com> (https://xlsdg.org/)",
+  "author": "Sujeet Pillai <sujeet.pillai@gmail.com> (https://github.com/sujeetpillai)",
   "browser": "dist/VueECharts.js",
   "bugs": {
     "url": "https://github.com/xlsdg/vue-echarts-v3/issues"
   },
   "dependencies": {
     "element-resize-detector": "latest",
-    "lodash.throttle": "latest"
+    "lodash": "latest",
+    "lodash.throttle": "^4.1.1"
   },
   "description": "Vue.js component wrap for ECharts.js(v3.x+)",
   "devDependencies": {
@@ -24,26 +25,27 @@
     "dist",
     "src"
   ],
-  "homepage": "https://github.com/xlsdg/vue-echarts-v3",
+  "homepage": "https://github.com/sujeetpillai/vue3-echarts-v3",
   "jsdelivr": "dist/VueECharts.min.js",
   "keywords": [
     "echarts",
     "library",
     "vue",
     "vue-echarts",
-    "vue-echarts-v3"
+    "vue-echarts-v3",
+    "vue3-echarts-v3"
   ],
   "license": "MIT",
   "main": "dist/VueECharts.cjs.js",
   "module": "dist/VueECharts.es.js",
-  "name": "vue-echarts-v3",
+  "name": "vue3-echarts-v3",
   "peerDependencies": {
     "echarts": "*",
     "vue": "*"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/xlsdg/vue-echarts-v3.git"
+    "url": "https://github.com/sujeetpillai/vue3-echarts-v3"
   },
   "scripts": {
     "build": "bili",
@@ -53,5 +55,5 @@
   },
   "source": "src/full.js",
   "unpkg": "dist/VueECharts.min.js",
-  "version": "2.0.1"
+  "version": "1.0.0"
 }

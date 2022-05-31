@@ -1,14 +1,16 @@
 (function(global, factory) {
   typeof exports === 'object' && typeof module !== 'undefined'
-    ? (module.exports = factory(require('echarts')))
+    ? (module.exports = factory(require('vue'), require('echarts')))
     : typeof define === 'function' && define.amd
-    ? define(['echarts'], factory)
-    : (global.VueECharts = factory(global.echarts));
-})(this, function(ECharts) {
+    ? define(['vue', 'echarts'], factory)
+    : (global.VueECharts = factory(global.Vue, global.echarts));
+})(this, function(vue, ECharts) {
   'use strict';
 
   var commonjsGlobal =
-    typeof window !== 'undefined'
+    typeof globalThis !== 'undefined'
+      ? globalThis
+      : typeof window !== 'undefined'
       ? window
       : typeof global !== 'undefined'
       ? global
@@ -928,10 +930,6 @@
      * @param {function} listener The listener callback to be called for each resize event of the element. The element will be given as a parameter to the listener callback.
      */
     function addListener(element, listener) {
-      if (!getObject(element)) {
-        throw new Error('Element is not detectable by this strategy.');
-      }
-
       function listenerProxy() {
         listener(element);
       }
@@ -944,8 +942,19 @@
         element.attachEvent('onresize', listenerProxy);
       } else {
         var object = getObject(element);
+
+        if (!object) {
+          throw new Error('Element is not detectable by this strategy.');
+        }
+
         object.contentDocument.defaultView.addEventListener('resize', listenerProxy);
       }
+    }
+
+    function buildCssTextString(rules) {
+      var seperator = options.important ? ' !important; ' : '; ';
+
+      return (rules.join(seperator) + seperator).trim();
     }
 
     /**
@@ -966,8 +975,20 @@
       var debug = options.debug;
 
       function injectObject(element, callback) {
-        var OBJECT_STYLE =
-          'display: block; position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; padding: 0; margin: 0; opacity: 0; z-index: -1000; pointer-events: none;';
+        var OBJECT_STYLE = buildCssTextString([
+          'display: block',
+          'position: absolute',
+          'top: 0',
+          'left: 0',
+          'width: 100%',
+          'height: 100%',
+          'border: none',
+          'padding: 0',
+          'margin: 0',
+          'opacity: 0',
+          'z-index: -1000',
+          'pointer-events: none',
+        ]);
 
         //The target element needs to be positioned (everything except static) so the absolute positioned object will be positioned relative to the target element.
 
@@ -988,7 +1009,7 @@
         function mutateDom() {
           function alterPositionStyles() {
             if (style.position === 'static') {
-              element.style.position = 'relative';
+              element.style.setProperty('position', 'relative', options.important ? 'important' : '');
 
               var removeRelativeStyles = function(reporter, element, style, property) {
                 function getNumericalValue(value) {
@@ -1008,7 +1029,7 @@
                       ' will be set to 0. Element: ',
                     element
                   );
-                  element.style[property] = 0;
+                  element.style.setProperty(property, '0', options.important ? 'important' : '');
                 }
               };
 
@@ -1034,7 +1055,12 @@
               //So if it is not present, poll it with an timeout until it is present.
               //TODO: Could maybe be handled better with object.onreadystatechange or similar.
               if (!element.contentDocument) {
-                setTimeout(function checkForObjectDocument() {
+                var state = getState(element);
+                if (state.checkForObjectDocumentTimeoutId) {
+                  window.clearTimeout(state.checkForObjectDocumentTimeoutId);
+                }
+                state.checkForObjectDocumentTimeoutId = setTimeout(function checkForObjectDocument() {
+                  state.checkForObjectDocumentTimeoutId = 0;
                   getDocument(element, callback);
                 }, 100);
 
@@ -1076,6 +1102,11 @@
             object.data = 'about:blank';
           }
 
+          if (!getState(element)) {
+            // The element has been uninstalled before the actual loading happened.
+            return;
+          }
+
           element.appendChild(object);
           getState(element).object = object;
 
@@ -1113,11 +1144,26 @@
     }
 
     function uninstall(element) {
-      if (browserDetector.isIE(8)) {
-        element.detachEvent('onresize', getState(element).object.proxy);
-      } else {
-        element.removeChild(getObject(element));
+      if (!getState(element)) {
+        return;
       }
+
+      var object = getObject(element);
+
+      if (!object) {
+        return;
+      }
+
+      if (browserDetector.isIE(8)) {
+        element.detachEvent('onresize', object.proxy);
+      } else {
+        element.removeChild(object);
+      }
+
+      if (getState(element).checkForObjectDocumentTimeoutId) {
+        window.clearTimeout(getState(element).checkForObjectDocumentTimeoutId);
+      }
+
       delete getState(element).object;
     }
 
@@ -1149,35 +1195,50 @@
     //TODO: Could this perhaps be done at installation time?
     var scrollbarSizes = getScrollbarSizes();
 
-    // Inject the scrollbar styling that prevents them from appearing sometimes in Chrome.
-    // The injected container needs to have a class, so that it may be styled with CSS (pseudo elements).
     var styleId = 'erd_scroll_detection_scrollbar_style';
     var detectionContainerClass = 'erd_scroll_detection_container';
-    injectScrollStyle(styleId, detectionContainerClass);
+
+    function initDocument(targetDocument) {
+      // Inject the scrollbar styling that prevents them from appearing sometimes in Chrome.
+      // The injected container needs to have a class, so that it may be styled with CSS (pseudo elements).
+      injectScrollStyle(targetDocument, styleId, detectionContainerClass);
+    }
+
+    initDocument(window.document);
+
+    function buildCssTextString(rules) {
+      var seperator = options.important ? ' !important; ' : '; ';
+
+      return (rules.join(seperator) + seperator).trim();
+    }
 
     function getScrollbarSizes() {
       var width = 500;
       var height = 500;
 
       var child = document.createElement('div');
-      child.style.cssText =
-        'position: absolute; width: ' +
-        width * 2 +
-        'px; height: ' +
-        height * 2 +
-        'px; visibility: hidden; margin: 0; padding: 0;';
+      child.style.cssText = buildCssTextString([
+        'position: absolute',
+        'width: ' + width * 2 + 'px',
+        'height: ' + height * 2 + 'px',
+        'visibility: hidden',
+        'margin: 0',
+        'padding: 0',
+      ]);
 
       var container = document.createElement('div');
-      container.style.cssText =
-        'position: absolute; width: ' +
-        width +
-        'px; height: ' +
-        height +
-        'px; overflow: scroll; visibility: none; top: ' +
-        -width * 3 +
-        'px; left: ' +
-        -height * 3 +
-        'px; visibility: hidden; margin: 0; padding: 0;';
+      container.style.cssText = buildCssTextString([
+        'position: absolute',
+        'width: ' + width + 'px',
+        'height: ' + height + 'px',
+        'overflow: scroll',
+        'visibility: none',
+        'top: ' + -width * 3 + 'px',
+        'left: ' + -height * 3 + 'px',
+        'visibility: hidden',
+        'margin: 0',
+        'padding: 0',
+      ]);
 
       container.appendChild(child);
 
@@ -1194,34 +1255,38 @@
       };
     }
 
-    function injectScrollStyle(styleId, containerClass) {
+    function injectScrollStyle(targetDocument, styleId, containerClass) {
       function injectStyle(style, method) {
         method =
           method ||
           function(element) {
-            document.head.appendChild(element);
+            targetDocument.head.appendChild(element);
           };
 
-        var styleElement = document.createElement('style');
+        var styleElement = targetDocument.createElement('style');
         styleElement.innerHTML = style;
         styleElement.id = styleId;
         method(styleElement);
         return styleElement;
       }
 
-      if (!document.getElementById(styleId)) {
+      if (!targetDocument.getElementById(styleId)) {
         var containerAnimationClass = containerClass + '_animation';
         var containerAnimationActiveClass = containerClass + '_animation_active';
         var style = '/* Created by the element-resize-detector library. */\n';
-        style += '.' + containerClass + ' > div::-webkit-scrollbar { display: none; }\n\n';
+        style +=
+          '.' + containerClass + ' > div::-webkit-scrollbar { ' + buildCssTextString(['display: none']) + ' }\n\n';
         style +=
           '.' +
           containerAnimationActiveClass +
-          ' { -webkit-animation-duration: 0.1s; animation-duration: 0.1s; -webkit-animation-name: ' +
-          containerAnimationClass +
-          '; animation-name: ' +
-          containerAnimationClass +
-          '; }\n';
+          ' { ' +
+          buildCssTextString([
+            '-webkit-animation-duration: 0.1s',
+            'animation-duration: 0.1s',
+            '-webkit-animation-name: ' + containerAnimationClass,
+            'animation-name: ' + containerAnimationClass,
+          ]) +
+          ' }\n';
         style +=
           '@-webkit-keyframes ' +
           containerAnimationClass +
@@ -1312,7 +1377,10 @@
 
       function isDetached(element) {
         function isInDocument(element) {
-          return element === element.ownerDocument.body || element.ownerDocument.body.contains(element);
+          var isInShadowRoot = element.getRootNode && element.getRootNode().contains(element);
+          return (
+            element === element.ownerDocument.body || element.ownerDocument.body.contains(element) || isInShadowRoot
+          );
         }
 
         if (!isInDocument(element)) {
@@ -1427,8 +1495,16 @@
         if (!container) {
           container = document.createElement('div');
           container.className = detectionContainerClass;
-          container.style.cssText =
-            'visibility: hidden; display: inline; width: 0px; height: 0px; z-index: -1; overflow: hidden; margin: 0; padding: 0;';
+          container.style.cssText = buildCssTextString([
+            'visibility: hidden',
+            'display: inline',
+            'width: 0px',
+            'height: 0px',
+            'z-index: -1',
+            'overflow: hidden',
+            'margin: 0',
+            'padding: 0',
+          ]);
           getState(element).container = container;
           addAnimationClass(container);
           element.appendChild(container);
@@ -1452,7 +1528,7 @@
           var style = getState(element).style;
 
           if (style.position === 'static') {
-            element.style.position = 'relative';
+            element.style.setProperty('position', 'relative', options.important ? 'important' : '');
 
             var removeRelativeStyles = function(reporter, element, style, property) {
               function getNumericalValue(value) {
@@ -1491,7 +1567,7 @@
           bottom = !bottom ? '0' : bottom + 'px';
           right = !right ? '0' : right + 'px';
 
-          return 'left: ' + left + '; top: ' + top + '; right: ' + right + '; bottom: ' + bottom + ';';
+          return ['left: ' + left, 'top: ' + top, 'right: ' + right, 'bottom: ' + bottom];
         }
 
         debug('Injecting elements');
@@ -1519,22 +1595,47 @@
 
         var scrollbarWidth = scrollbarSizes.width;
         var scrollbarHeight = scrollbarSizes.height;
-        var containerContainerStyle =
-          'position: absolute; flex: none; overflow: hidden; z-index: -1; visibility: hidden; width: 100%; height: 100%; left: 0px; top: 0px;';
-        var containerStyle =
-          'position: absolute; flex: none; overflow: hidden; z-index: -1; visibility: hidden; ' +
-          getLeftTopBottomRightCssText(
-            -(1 + scrollbarWidth),
-            -(1 + scrollbarHeight),
-            -scrollbarHeight,
-            -scrollbarWidth
-          );
-        var expandStyle =
-          'position: absolute; flex: none; overflow: scroll; z-index: -1; visibility: hidden; width: 100%; height: 100%;';
-        var shrinkStyle =
-          'position: absolute; flex: none; overflow: scroll; z-index: -1; visibility: hidden; width: 100%; height: 100%;';
-        var expandChildStyle = 'position: absolute; left: 0; top: 0;';
-        var shrinkChildStyle = 'position: absolute; width: 200%; height: 200%;';
+        var containerContainerStyle = buildCssTextString([
+          'position: absolute',
+          'flex: none',
+          'overflow: hidden',
+          'z-index: -1',
+          'visibility: hidden',
+          'width: 100%',
+          'height: 100%',
+          'left: 0px',
+          'top: 0px',
+        ]);
+        var containerStyle = buildCssTextString(
+          ['position: absolute', 'flex: none', 'overflow: hidden', 'z-index: -1', 'visibility: hidden'].concat(
+            getLeftTopBottomRightCssText(
+              -(1 + scrollbarWidth),
+              -(1 + scrollbarHeight),
+              -scrollbarHeight,
+              -scrollbarWidth
+            )
+          )
+        );
+        var expandStyle = buildCssTextString([
+          'position: absolute',
+          'flex: none',
+          'overflow: scroll',
+          'z-index: -1',
+          'visibility: hidden',
+          'width: 100%',
+          'height: 100%',
+        ]);
+        var shrinkStyle = buildCssTextString([
+          'position: absolute',
+          'flex: none',
+          'overflow: scroll',
+          'z-index: -1',
+          'visibility: hidden',
+          'width: 100%',
+          'height: 100%',
+        ]);
+        var expandChildStyle = buildCssTextString(['position: absolute', 'left: 0', 'top: 0']);
+        var shrinkChildStyle = buildCssTextString(['position: absolute', 'width: 200%', 'height: 200%']);
 
         var containerContainer = document.createElement('div');
         var container = document.createElement('div');
@@ -1564,11 +1665,21 @@
         rootContainer.appendChild(containerContainer);
 
         function onExpandScroll() {
-          getState(element).onExpand && getState(element).onExpand();
+          var state = getState(element);
+          if (state && state.onExpand) {
+            state.onExpand();
+          } else {
+            debug('Aborting expand scroll handler: element has been uninstalled');
+          }
         }
 
         function onShrinkScroll() {
-          getState(element).onShrink && getState(element).onShrink();
+          var state = getState(element);
+          if (state && state.onShrink) {
+            state.onShrink();
+          } else {
+            debug('Aborting shrink scroll handler: element has been uninstalled');
+          }
         }
 
         addEvent(expand, 'scroll', onExpandScroll);
@@ -1585,13 +1696,16 @@
           var expandChild = getExpandChildElement(element);
           var expandWidth = getExpandWidth(width);
           var expandHeight = getExpandHeight(height);
-          expandChild.style.width = expandWidth + 'px';
-          expandChild.style.height = expandHeight + 'px';
+          expandChild.style.setProperty('width', expandWidth + 'px', options.important ? 'important' : '');
+          expandChild.style.setProperty('height', expandHeight + 'px', options.important ? 'important' : '');
         }
 
         function updateDetectorElements(done) {
           var width = element.offsetWidth;
           var height = element.offsetHeight;
+
+          // Check whether the size has actually changed since last time the algorithm ran. If not, some steps may be skipped.
+          var sizeChanged = width !== getState(element).lastWidth || height !== getState(element).lastHeight;
 
           debug('Storing current size', width, height);
 
@@ -1603,6 +1717,10 @@
           // Since there is no way to cancel the fn executions, we need to add an uninstall guard to all fns of the batch.
 
           batchProcessor.add(0, function performUpdateChildSizes() {
+            if (!sizeChanged) {
+              return;
+            }
+
             if (!getState(element)) {
               debug('Aborting because element has been uninstalled');
               return;
@@ -1626,6 +1744,9 @@
           });
 
           batchProcessor.add(1, function updateScrollbars() {
+            // This function needs to be invoked event though the size is unchanged. The element could have been resized very quickly and then
+            // been restored to the original size, which will have changed the scrollbar positions.
+
             if (!getState(element)) {
               debug('Aborting because element has been uninstalled');
               return;
@@ -1639,7 +1760,7 @@
             positionScrollbars(element, width, height);
           });
 
-          if (done) {
+          if (sizeChanged && done) {
             batchProcessor.add(2, function() {
               if (!getState(element)) {
                 debug('Aborting because element has been uninstalled');
@@ -1669,7 +1790,7 @@
 
           var state = getState(element);
 
-          // Don't notify the if the current size is the start size, and this is the first notification.
+          // Don't notify if the current size is the start size, and this is the first notification.
           if (
             isFirstNotify() &&
             state.lastWidth === state.startSize.width &&
@@ -1717,15 +1838,7 @@
             return;
           }
 
-          var width = element.offsetWidth;
-          var height = element.offsetHeight;
-
-          if (width !== getState(element).lastWidth || height !== getState(element).lastHeight) {
-            debug('Element size changed.');
-            updateDetectorElements(notifyListenersIfNeeded);
-          } else {
-            debug('Element size has not changed (' + width + 'x' + height + ').');
-          }
+          updateDetectorElements(notifyListenersIfNeeded);
         }
 
         debug('registerListenersAndPositionElements invoked.');
@@ -1816,6 +1929,7 @@
       makeDetectable: makeDetectable,
       addListener: addListener,
       uninstall: uninstall,
+      initDocument: initDocument,
     };
   };
 
@@ -1918,11 +2032,13 @@
     //The detection strategy to be used.
     var detectionStrategy;
     var desiredStrategy = getOption(options, 'strategy', 'object');
+    var importantCssRules = getOption(options, 'important', false);
     var strategyOptions = {
       reporter: reporter$$1,
       batchProcessor: batchProcessor$$1,
       stateHandler: stateHandler,
       idHandler: idHandler$$1,
+      important: importantCssRules,
     };
 
     if (desiredStrategy === 'scroll') {
@@ -2037,45 +2153,49 @@
           debug && reporter$$1.log(id, 'Making detectable...');
           //The element is not prepared to be detectable, so do prepare it and add a listener to it.
           elementUtils$$1.markBusy(element, true);
-          return detectionStrategy.makeDetectable({ debug: debug }, element, function onElementDetectable(element) {
-            debug && reporter$$1.log(id, 'onElementDetectable');
+          return detectionStrategy.makeDetectable(
+            { debug: debug, important: importantCssRules },
+            element,
+            function onElementDetectable(element) {
+              debug && reporter$$1.log(id, 'onElementDetectable');
 
-            if (stateHandler.getState(element)) {
-              elementUtils$$1.markAsDetectable(element);
-              elementUtils$$1.markBusy(element, false);
-              detectionStrategy.addListener(element, onResizeCallback);
-              addListener(callOnAdd, element, listener);
+              if (stateHandler.getState(element)) {
+                elementUtils$$1.markAsDetectable(element);
+                elementUtils$$1.markBusy(element, false);
+                detectionStrategy.addListener(element, onResizeCallback);
+                addListener(callOnAdd, element, listener);
 
-              // Since the element size might have changed since the call to "listenTo", we need to check for this change,
-              // so that a resize event may be emitted.
-              // Having the startSize object is optional (since it does not make sense in some cases such as unrendered elements), so check for its existance before.
-              // Also, check the state existance before since the element may have been uninstalled in the installation process.
-              var state = stateHandler.getState(element);
-              if (state && state.startSize) {
-                var width = element.offsetWidth;
-                var height = element.offsetHeight;
-                if (state.startSize.width !== width || state.startSize.height !== height) {
-                  onResizeCallback(element);
+                // Since the element size might have changed since the call to "listenTo", we need to check for this change,
+                // so that a resize event may be emitted.
+                // Having the startSize object is optional (since it does not make sense in some cases such as unrendered elements), so check for its existance before.
+                // Also, check the state existance before since the element may have been uninstalled in the installation process.
+                var state = stateHandler.getState(element);
+                if (state && state.startSize) {
+                  var width = element.offsetWidth;
+                  var height = element.offsetHeight;
+                  if (state.startSize.width !== width || state.startSize.height !== height) {
+                    onResizeCallback(element);
+                  }
                 }
+
+                if (onReadyCallbacks[id]) {
+                  forEach$1(onReadyCallbacks[id], function(callback) {
+                    callback();
+                  });
+                }
+              } else {
+                // The element has been unisntalled before being detectable.
+                debug && reporter$$1.log(id, 'Element uninstalled before being detectable.');
               }
 
-              if (onReadyCallbacks[id]) {
-                forEach$1(onReadyCallbacks[id], function(callback) {
-                  callback();
-                });
+              delete onReadyCallbacks[id];
+
+              elementsReady++;
+              if (elementsReady === elements.length) {
+                onReadyCallback();
               }
-            } else {
-              // The element has been unisntalled before being detectable.
-              debug && reporter$$1.log(id, 'Element uninstalled before being detectable.');
             }
-
-            delete onReadyCallbacks[id];
-
-            elementsReady++;
-            if (elementsReady === elements.length) {
-              onReadyCallback();
-            }
-          });
+          );
         }
 
         debug && reporter$$1.log(id, 'Already detecable, adding listener.');
@@ -2113,11 +2233,16 @@
       });
     }
 
+    function initDocument(targetDocument) {
+      detectionStrategy.initDocument && detectionStrategy.initDocument(targetDocument);
+    }
+
     return {
       listenTo: listenTo,
       removeListener: eventListenerHandler.removeListener,
       removeAllListeners: eventListenerHandler.removeAllListeners,
       uninstall: uninstall,
+      initDocument: initDocument,
     };
   };
 
@@ -2222,7 +2347,8 @@
         return {
           fnResize: null,
           insResize: null,
-          instance: null,
+          // instance: null,
+          // Had to make this variable non-reactive. It is still set in this.instance in init.
           watches: {
             loading: null,
             option: null,
@@ -2574,9 +2700,9 @@
       registerTheme: function registerTheme(themeName, theme) {
         return ECharts$$1.registerTheme(themeName, theme);
       },
-      render: function render(h) {
+      render: function render() {
         var that = this;
-        return h('div', {
+        return vue.h('div', {
           style: that.styles,
         });
       },

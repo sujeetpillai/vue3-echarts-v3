@@ -1,7 +1,8 @@
 # vue-echarts-v3 [![npm](https://img.shields.io/npm/v/vue-echarts-v3.svg)](https://www.npmjs.com/package/vue-echarts-v3) [![vue2](https://img.shields.io/badge/vue-2.x-brightgreen.svg)](https://vuejs.org/) [![echarts3](https://img.shields.io/badge/echarts-3.x-brightgreen.svg)](http://echarts.baidu.com/)
 
-> [Vue.js](https://vuejs.org/) `v2.x+` component wrap for [Apache ECharts (incubating)](https://github.com/apache/incubator-echarts) `v3.x+`
+> [Vue.js](https://vuejs.org/) `v3.x+` component wrap for [Apache ECharts (incubating)](https://github.com/apache/incubator-echarts) `v3.x+`
 
+Minimally ported from [https://github.com/xlsdg/vue-echarts-v3](https://github.com/xlsdg/vue-echarts-v3)
 
 ## Feature
 
