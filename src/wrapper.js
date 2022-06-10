@@ -1,6 +1,6 @@
 import _throttle from 'lodash.throttle';
-import {h} from 'vue';
 import Resize from 'element-resize-detector';
+import * as Vue from 'vue'
 
 const ECHARTS_EVENTS = [
   'click',
@@ -414,7 +414,10 @@ function wrapECharts(ECharts) {
     registerTheme(themeName, theme) {
       return ECharts.registerTheme(themeName, theme);
     },
-    render() {
+    render(h) {
+      if(typeof h=="object"){
+        h = Vue.h
+      }
       const that = this;
       return h('div', {
         style: that.styles
